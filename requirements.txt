@@ -1,0 +1,23 @@
+# Core numerical libraries
+numpy
+torch  # PyTorch with CUDA support
+numba
+
+# Visualization
+vispy
+pygame
+
+# Monitoring and logging
+psutil
+gputil
+matplotlib  # Optional, for visual benchmarking reports
+loguru      # Better logging
+
+# Development and profiling
+tqdm         # Progress bars
+# cprofile     # Standard profiler
+line_profiler
+py-spy       # External, for flame graphs
+
+# Optional GUI tools
+PyQt5        # If you want a GUI in the future
