@@ -1,23 +1,31 @@
 # Core numerical libraries
 numpy
-torch  # PyTorch with CUDA support
 numba
+# PyTorch (with CUDA support if available)
+torch
 
 # Visualization
-vispy
-pygame
+vispy>=0.13.0
+pygame>=2.0.0
 
 # Monitoring and logging
-psutil
+psutil>=5.8.0
 gputil
 matplotlib  # Optional, for visual benchmarking reports
 loguru      # Better logging
 
 # Development and profiling
 tqdm         # Progress bars
-# cprofile     # Standard profiler
 line_profiler
 py-spy       # External, for flame graphs
 
 # Optional GUI tools
 PyQt5        # If you want a GUI in the future
+
+# Windows-specific (optional, for temperature monitoring)
+wmi; platform_system=="Windows"
+pywin32; platform_system=="Windows"
+
+# General
+scipy
+

@@ -1,0 +1,12 @@
+Target: Python prototype
+Scope: Galaxy scale simulations
+Physics model: Gravitational force, time-stepping, electromagnetic force, dark matter and hydrodynamics
+Data structures: PyTorch Tensors
+Interaction model: Provide option to switch between the two
+CPU Parallelism: Numba
+Visualization: VisPy + PyGame
+Performance Monitoring: RAM, GPU ( Usage + temp ), CPU ( Usage + temp )
+Performance Storage: As detailed logs
+Stress Testing loop: Optional, provide option to push the system to the limit but before starting ensure that the system can handle it
+Benchmarking: Provide options in the Menu or Lobby screen
+Algorithms to Use: Barnes-Hut, SPH fluid  simulation, General Relativity Approximation

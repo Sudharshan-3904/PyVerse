@@ -1,0 +1,76 @@
+{
+  "bodies": [
+    {
+      "name": "Sun",
+      "mass": 1.989e30,
+      "radius": 6.9634e8,
+      "position": [0, 0, 0],
+      "velocity": [0, 0, 0],
+      "color": [255, 255, 0]
+    },
+    {
+      "name": "Mercury",
+      "mass": 3.301e23,
+      "radius": 2.4397e6,
+      "position": [5.79e10, 0, 0],
+      "velocity": [0, 4.79e4, 0],
+      "color": [200, 200, 200]
+    },
+    {
+      "name": "Venus",
+      "mass": 4.867e24,
+      "radius": 6.0518e6,
+      "position": [1.082e11, 0, 0],
+      "velocity": [0, 3.5e4, 0],
+      "color": [255, 220, 180]
+    },
+    {
+      "name": "Earth",
+      "mass": 5.972e24,
+      "radius": 6.371e6,
+      "position": [1.496e11, 0, 0],
+      "velocity": [0, 2.98e4, 0],
+      "color": [100, 149, 237]
+    },
+    {
+      "name": "Mars",
+      "mass": 6.417e23,
+      "radius": 3.3895e6,
+      "position": [2.279e11, 0, 0],
+      "velocity": [0, 2.41e4, 0],
+      "color": [188, 39, 50]
+    },
+    {
+      "name": "Jupiter",
+      "mass": 1.898e27,
+      "radius": 6.9911e7,
+      "position": [7.785e11, 0, 0],
+      "velocity": [0, 1.31e4, 0],
+      "color": [218, 165, 32]
+    },
+    {
+      "name": "Saturn",
+      "mass": 5.683e26,
+      "radius": 5.8232e7,
+      "position": [1.433e12, 0, 0],
+      "velocity": [0, 9.7e3, 0],
+      "color": [210, 180, 140]
+    },
+    {
+      "name": "Uranus",
+      "mass": 8.681e25,
+      "radius": 2.5362e7,
+      "position": [2.877e12, 0, 0],
+      "velocity": [0, 6.8e3, 0],
+      "color": [175, 238, 238]
+    },
+    {
+      "name": "Neptune",
+      "mass": 1.024e26,
+      "radius": 2.4622e7,
+      "position": [4.503e12, 0, 0],
+      "velocity": [0, 5.4e3, 0],
+      "color": [72, 61, 139]
+    }
+  ]
+}
