@@ -1,0 +1,9 @@
+{
+  "config": {
+    "interaction_model": "barnes_hut",
+    "gpu_mode": true,
+    "particle_count": 100000,
+    "integration_method": "verlet",
+    "preset": "solar_system"
+  }
+}

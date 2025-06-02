@@ -6,12 +6,12 @@
 
    | S.No | Task                   | Description                                                               | Done |
    | ---- | ---------------------- | ------------------------------------------------------------------------- | :--: |
-   | 1.1  | Barnes-Hut Octree      | Implement full Barnes-Hut octree algorithm for N log N gravity            | [ ]  |
-   | 1.2  | Direct Gravity (Numba) | Implement direct gravity with Numba for CPU parallelism                   | [ ]  |
-   | 1.3  | Electromagnetic Force  | Implement electromagnetic force calculation (support for particle charge) | [ ]  |
-   | 1.4  | Dark Matter Model      | Implement dark matter force model (heuristic or parametric)               | [ ]  |
-   | 1.5  | SPH Fluid Dynamics     | Implement SPH (Smoothed Particle Hydrodynamics) for fluid dynamics        | [ ]  |
-   | 1.6  | General Relativity     | Implement general relativity corrections (post-Newtonian or other)        | [ ]  |
+   | 1.1  | Barnes-Hut Octree      | Implement full Barnes-Hut octree algorithm for N log N gravity            | [ x ]  |
+   | 1.2  | Direct Gravity (Numba) | Implement direct gravity with Numba for CPU parallelism                   | [ x ]  |
+   | 1.3  | Electromagnetic Force  | Implement electromagnetic force calculation (support for particle charge) | [ x ]  |
+   | 1.4  | Dark Matter Model      | Implement dark matter force model (heuristic or parametric)               | [ x ]  |
+   | 1.5  | SPH Fluid Dynamics     | Implement SPH (Smoothed Particle Hydrodynamics) for fluid dynamics        | [ x ]  |
+   | 1.6  | General Relativity     | Implement general relativity corrections (post-Newtonian or other)        | [ x ]  |
 
 2. **Simulation Loop & Models**
 

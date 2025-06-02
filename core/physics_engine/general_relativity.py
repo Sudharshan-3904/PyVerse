@@ -2,14 +2,13 @@ import torch
 
 def apply_relativity_corrections(particles, forces):
     """
-    Placeholder for post-Newtonian corrections.
+    Post-Newtonian correction (1st order) for general relativity.
+    Reduces force as velocity approaches speed of light.
     """
-    c = 3e8  # Speed of light
+    c = 3e8  # Speed of light (m/s)
     vel = particles["vel"]
-    corrections = 1 - (torch.norm(vel, dim=1, keepdim=True) / c) ** 2
-    forces = forces * corrections
-    return apply_gr_corrections(particles, forces)
-
-def apply_gr_corrections(particles, forces):
-    # Placeholder: returns forces unchanged
+    v2 = torch.sum(vel**2, dim=1, keepdim=True)
+    gamma = 1.0 / torch.sqrt(1 - v2 / c**2 + 1e-10)
+    # Correction: F' = F / gamma^3
+    forces = forces / (gamma ** 3)
     return forces
