@@ -6,7 +6,7 @@
 
    | S.No | Task                   | Description                                                               | Done |
    | ---- | ---------------------- | ------------------------------------------------------------------------- | :--: |
-   | 1.1  | Barnes-Hut Octree      | Implement full Barnes-Hut octree algorithm for N log N gravity            | [ x ]  |
+   | 1.1  | Barnes-Hut Octree      | Implement full Barnes-Hut octree algorithm for N log N gravity            | [x]  |
    | 1.2  | Direct Gravity (Numba) | Implement direct gravity with Numba for CPU parallelism                   | [ x ]  |
    | 1.3  | Electromagnetic Force  | Implement electromagnetic force calculation (support for particle charge) | [ x ]  |
    | 1.4  | Dark Matter Model      | Implement dark matter force model (heuristic or parametric)               | [ x ]  |
