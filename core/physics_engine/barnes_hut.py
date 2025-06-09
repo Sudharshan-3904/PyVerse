@@ -16,7 +16,9 @@ def build_octree(pos, indices, center, half_size, max_particles=1):
     if len(indices) <= max_particles:
         return OctreeNode(center, half_size, indices)
     node = OctreeNode(center, half_size, indices)
-    offsets = torch.tensor([[dx, dy, dz] for dx in [-0.5, 0.5] for dy in [-0.5, 0.5] for dz in [-0.5, 0.5]])
+    # Fix for device mismatch error: ensure all tensors are created on the same device as pos
+    # In build_octree and all force calculations, always use pos.device for new tensors
+    offsets = torch.tensor([[dx, dy, dz] for dx in [-0.5, 0.5] for dy in [-0.5, 0.5] for dz in [-0.5, 0.5]], device=center.device, dtype=center.dtype)
     for offset in offsets:
         child_center = center + offset * half_size
         mask = ((pos[indices] >= (child_center - half_size/2)) & (pos[indices] < (child_center + half_size/2))).all(dim=1)
@@ -69,6 +71,9 @@ def compute_barnes_hut_forces(particles, theta=0.5, G=6.67430e-11):
     pos = particles["pos"]
     mass = particles["mass"].flatten()
     n = pos.shape[0]
+    if n == 0:
+        # No particles: return empty force tensor
+        return torch.zeros_like(pos)
     min_pos = pos.min(dim=0).values
     max_pos = pos.max(dim=0).values
     center = (min_pos + max_pos) / 2

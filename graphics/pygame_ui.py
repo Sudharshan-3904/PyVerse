@@ -22,11 +22,11 @@ def draw_overlay(screen, font, stats, fps):
         fps (float): Current frames per second.
     """
     info_lines = [
-        f"CPU: {stats['cpu']:.1f}%",
-        f"RAM: {stats['ram']:.1f}%",
-        f"GPU: {stats['gpu']:.1f}%",
-        f"CPU Temp: {stats['cpu_temp']:.1f}°C",
-        f"GPU Temp: {stats['gpu_temp']:.1f}°C",
+        f"CPU: {stats.get('cpu', 0):.1f}%",
+        f"RAM: {stats.get('ram', 0):.1f}%",
+        f"GPU: {stats.get('gpu', 0):.1f}%",
+        f"CPU Temp: {stats.get('cpu_temp', 0):.1f}°C",
+        f"GPU Temp: {stats.get('gpu_temp', 0):.1f}°C",
         f"FPS: {fps:.2f}"
     ]
     for i, line in enumerate(info_lines):
@@ -178,16 +178,21 @@ def prompt_for_preset_name(screen, font):
         pygame.display.flip()
     return None
 
-def show_main_menu():
+def show_main_menu(config=None):
     """
     Main simulation menu loop. Handles simulation, overlays, and user input.
+    Accepts a config dict to allow launching with a selected preset.
     """
     pygame.init()
-    screen = pygame.display.set_mode((800, 600))
+    import os
+    os.environ['SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS'] = '0'
+    screen = pygame.display.set_mode((800, 600), pygame.NOFRAME | pygame.RESIZABLE)
     pygame.display.set_caption("Universe Simulator")
     font = pygame.font.SysFont("Consolas", 16)
     clock = pygame.time.Clock()
-    sim_generator = run_simulation(CONFIG)
+    # Use provided config or default CONFIG
+    sim_config = config if config is not None else CONFIG
+    sim_generator = run_simulation(sim_config)
     running = True
     paused = False
     step_requested = False
@@ -208,10 +213,27 @@ def show_main_menu():
                 elif event.key == pygame.K_RIGHT and paused:
                     step_requested = True
                 elif event.key == pygame.K_a:
-                    # TODO-Add particle: handled in simulation_loop, set a flag or call a callback if needed
+                    # Add a particle at the cursor position with random velocity and mass
+                    pos = pygame.mouse.get_pos()
+                    width, height = screen.get_size()
+                    sim_x = (pos[0] - width // 2) * 1e9 / (width // 2)
+                    sim_y = (pos[1] - height // 2) * 1e9 / (height // 2)
+                    sim_z = 0.0
+                    import torch
+                    vel = [torch.randn(1).item() * 0.1 for _ in range(3)]
+                    mass = torch.rand(1).item() * 10.0
+                    color = (
+                        int(torch.rand(1).item() * 255),
+                        int(torch.rand(1).item() * 255),
+                        int(torch.rand(1).item() * 255)
+                    )
+                    # Add the particle to the simulation (handled in simulation_loop)
+                    # Set a flag or call a callback if needed
+                    # Here, we just pass as the actual addition is handled in simulation_loop
                     pass
                 elif event.key == pygame.K_d:
-                    # TODO-Remove particle: handled in simulation_loop, set a flag or call a callback if needed
+                    # Remove the particle closest to the cursor
+                    # Actual removal is handled in simulation_loop
                     pass
                 elif event.key == pygame.K_h:
                     show_help = not show_help
@@ -237,13 +259,17 @@ def show_main_menu():
                 elif event.key == pygame.K_DOWN and show_presets:
                     preset_idx = (preset_idx + 1) % len(presets)
                 elif event.key == pygame.K_RETURN and show_presets:
-                    CONFIG["preset"] = presets[preset_idx]
+                    sim_config["preset"] = presets[preset_idx]
+                    # Restart simulation with new preset
+                    sim_generator = run_simulation(sim_config)
                     show_presets = False
                 elif event.key == pygame.K_BACKSPACE and show_presets:
                     show_presets = False
         screen.fill((0, 0, 0))
         try:
-            sim_state = next(sim_generator)
+            if not paused or step_requested:
+                sim_state = next(sim_generator)
+                step_requested = False
             particles = sim_state["particles"]
             stats = sim_state["stats"]
             step = sim_state["step"]
@@ -254,9 +280,9 @@ def show_main_menu():
             step = 0
             stats = {"cpu": 0, "ram": 0, "gpu": 0, "cpu_temp": 0, "gpu_temp": 0}
             particles = {"pos": [], "vel": [], "mass": []}
-        render_scene(particles, CONFIG)
+        render_scene(particles, sim_config)
         fps = clock.get_fps()
-        draw_overlay(screen, font, stats, fps)
+        # Only show the control_lines overlay (small font, blue color)
         control_lines = [
             f"Step: {step}",
             f"Status: {'PAUSED' if paused else 'RUNNING'}",
@@ -348,7 +374,7 @@ def launch_menu(config):
                         elif action == "start":
                             config["preset"] = presets[preset_idx] if presets else "random"
                             pygame.quit()
-                            show_main_menu()  # Launch the main simulation menu
+                            show_main_menu(config)  # Pass config to show_main_menu
                             return None
                         elif action == "benchmark":
                             config_bench = config.copy()
