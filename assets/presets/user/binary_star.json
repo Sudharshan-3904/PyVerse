@@ -1,0 +1,20 @@
+{
+  "bodies": [
+    {
+      "name": "StarA",
+      "mass": 2e30,
+      "radius": 7e8,
+      "position": [-1e11, 0, 0],
+      "velocity": [0, 15000, 0],
+      "color": [255, 255, 200]
+    },
+    {
+      "name": "StarB",
+      "mass": 2e30,
+      "radius": 7e8,
+      "position": [1e11, 0, 0],
+      "velocity": [0, -15000, 0],
+      "color": [200, 200, 255]
+    }
+  ]
+}

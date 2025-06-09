@@ -17,7 +17,7 @@ PyVerse is a Python-based, interactive, and extensible galaxy-scale simulation p
 1. **Clone the repository:**
 
    ```sh
-   git clone <your-repo-url>
+   git clone "https://github.com/Sudharshan-3904/PyVerse.git"
    cd PyVerse
    ```
 

@@ -2,7 +2,7 @@
 
 ## 🗂️ **Directory Structure**
 
-```
+```bash
 PyVerse/
 │
 ├── main.py                         # Entry point

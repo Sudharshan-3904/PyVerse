@@ -1,0 +1,36 @@
+{
+  "bodies": [
+    {
+      "name": "ProtoStar",
+      "mass": 1e30,
+      "radius": 7e8,
+      "position": [0, 0, 0],
+      "velocity": [0, 0, 0],
+      "color": [255, 255, 180]
+    },
+    {
+      "name": "Dust1",
+      "mass": 1e24,
+      "radius": 1e6,
+      "position": [1e11, 0, 0],
+      "velocity": [0, 30000, 0],
+      "color": [200, 200, 200]
+    },
+    {
+      "name": "Dust2",
+      "mass": 1e24,
+      "radius": 1e6,
+      "position": [-1e11, 0, 0],
+      "velocity": [0, -30000, 0],
+      "color": [180, 180, 180]
+    },
+    {
+      "name": "Dust3",
+      "mass": 1e24,
+      "radius": 1e6,
+      "position": [0, 1e11, 0],
+      "velocity": [-30000, 0, 0],
+      "color": [160, 160, 160]
+    }
+  ]
+}

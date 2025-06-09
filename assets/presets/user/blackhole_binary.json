@@ -1,0 +1,20 @@
+{
+  "bodies": [
+    {
+      "name": "BlackholeA",
+      "mass": 5e30,
+      "radius": 1e7,
+      "position": [-2e11, 0, 0],
+      "velocity": [0, 10000, 0],
+      "color": [30, 30, 30]
+    },
+    {
+      "name": "BlackholeB",
+      "mass": 5e30,
+      "radius": 1e7,
+      "position": [2e11, 0, 0],
+      "velocity": [0, -10000, 0],
+      "color": [60, 60, 60]
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "bodies": [
+    {
+      "name": "Body1",
+      "mass": 1e26,
+      "radius": 1e6,
+      "position": [0, 0, 0],
+      "velocity": [0, 1, 0],
+      "color": [255, 0, 0]
+    },
+    {
+      "name": "Body2",
+      "mass": 1e26,
+      "radius": 1e6,
+      "position": [1e7, 0, 0],
+      "velocity": [0, -1, 0],
+      "color": [0, 255, 0]
+    },
+    {
+      "name": "Body3",
+      "mass": 1e26,
+      "radius": 1e6,
+      "position": [5e6, 8.66e6, 0],
+      "velocity": [-1, 0, 0],
+      "color": [0, 0, 255]
+    }
+  ]
+}
