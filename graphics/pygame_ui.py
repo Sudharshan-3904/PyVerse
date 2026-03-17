@@ -230,7 +230,9 @@ def show_main_menu(config=None, create_mode=False):
     import torch
     
     overlay_enabled = True
-    
+    trail_history = []  # stores recent positions for motion trails
+    max_trail_frames = 30
+
     while running:
         w, h = screen.get_size()
         mouse_pos = pygame.mouse.get_pos()
@@ -294,23 +296,58 @@ def show_main_menu(config=None, create_mode=False):
             else:
                 color = [(200, 200, 255)] * pos.shape[0]
 
+            # Record trail positions
+            trail_history.append((pos.copy(), color.copy()))
+            if len(trail_history) > max_trail_frames:
+                trail_history.pop(0)
+
+            # Draw trailing motion (fading)
+            for t_idx, (trail_pos, trail_color) in enumerate(trail_history):
+                alpha = int(255 * (t_idx + 1) / len(trail_history) * 0.4)
+                for i, p in enumerate(trail_pos):
+                    nx = int(w // 2 + p[0] / 1e9 * (w // 2))
+                    ny = int(h // 2 + p[1] / 1e9 * (h // 2))
+                    if 0 <= nx <= w and 0 <= ny <= h:
+                        col = tuple(list(trail_color[i])[:3])
+                        trail_col = (col[0], col[1], col[2], alpha)
+                        trail_surf = pygame.Surface((3, 3), pygame.SRCALPHA)
+                        pygame.draw.circle(trail_surf, trail_col, (1, 1), 1)
+                        screen.blit(trail_surf, (nx - 1, ny - 1))
+
+            # Animate stars (pulsing) and render planets with rings
+            time_ms = pygame.time.get_ticks()
             for i, p in enumerate(pos):
                 nx = int(w // 2 + p[0] / 1e9 * (w // 2))
                 ny = int(h // 2 + p[1] / 1e9 * (h // 2))
                 if 0 <= nx <= w and 0 <= ny <= h:
                     m = float(mass[i]) if i < len(mass) else 1.0
-                    # Size based on mass (log scale), clamped for visibility
                     radius = int(min(max((math.log10(m + 1e-12) - 22) * 0.8 + 2, 2), 12))
+                    base_col = tuple(color[i])
+
+                    # Stars: pulsate glow (based on time) and draw core
                     if m > 1e28:
-                        # Render a soft glow for stars
-                        glow = radius * 3
+                        pulse = (math.sin((time_ms + i * 37) / 220) + 1) / 2
+                        glow = int(radius * (2.5 + pulse * 1.5))
                         glow_surf = pygame.Surface((glow * 2, glow * 2), pygame.SRCALPHA)
-                        glow_color = tuple(list(color[i])[:3]) + [45]
+                        glow_alpha = int(30 + pulse * 90)
+                        glow_color = tuple(list(base_col)[:3]) + [glow_alpha]
                         pygame.draw.circle(glow_surf, glow_color, (glow, glow), glow)
                         screen.blit(glow_surf, (nx - glow, ny - glow))
-                        pygame.draw.circle(screen, tuple(color[i]), (nx, ny), radius + 1)
+                        pygame.draw.circle(screen, base_col, (nx, ny), radius + 1)
+
+                    # Planets: draw shading + optional ring
                     else:
-                        pygame.draw.circle(screen, tuple(color[i]), (nx, ny), radius)
+                        pygame.draw.circle(screen, base_col, (nx, ny), radius)
+                        shade = (max(base_col[0] - 35, 0), max(base_col[1] - 35, 0), max(base_col[2] - 35, 0))
+                        pygame.draw.circle(screen, shade, (nx + radius // 3, ny - radius // 3), max(radius // 2, 1))
+
+                        # Render faint ring for mid-sized bodies
+                        if 3 < radius < 8:
+                            ring_radius = radius * 1.8
+                            ring_alpha = int(90 + 40 * math.sin((time_ms + i * 47) / 280))
+                            ring_surf = pygame.Surface((ring_radius * 2, ring_radius * 2), pygame.SRCALPHA)
+                            pygame.draw.circle(ring_surf, (200, 200, 220, ring_alpha), (ring_radius, ring_radius), int(ring_radius), width=1)
+                            screen.blit(ring_surf, (nx - ring_radius, ny - ring_radius))
 
         if overlay_enabled:
             # Stats backdrop HUD

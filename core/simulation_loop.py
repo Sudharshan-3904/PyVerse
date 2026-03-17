@@ -139,13 +139,18 @@ class SimulationSystem:
         self.particles = initialize_particles(config)
         self.model_fn = select_model(config.get("interaction_model", "direct"))
         self.integrator = get_integrator(config.get("integration_method", "verlet"))
+        self.physics_config = config.get("physics", {})
         self.step_count = 0
         self.stats = {"cpu": 0, "ram": 0, "gpu": 0}
         self.stats_update_interval = 60  # Update stats every 60 frames
 
     def update(self):
         """Perform a single iteration step of the simulation."""
-        forces = self.model_fn(self.particles)
+        if not self.physics_config.get("gravity", True):
+            # Gravity disabled, use zero forces
+            forces = torch.zeros_like(self.particles["pos"])
+        else:
+            forces = self.model_fn(self.particles)
         self.particles = self.integrator(self.particles, forces, self.config)
         if self.step_count % self.stats_update_interval == 0:
             self.stats = get_system_stats()
