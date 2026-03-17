@@ -75,8 +75,18 @@ def add_particle(particles, position, velocity, mass=1.0, color=(255, 255, 255))
         particles["color"] = torch.cat([particles["color"], color_tensor], dim=0)
     
     # Handle names if present
-    if "names" in particles:
-        particles["names"].append(f"Particle_{len(particles['names'])}")
+    if "names" not in particles:
+        particles["names"] = [f"Particle_{i}" for i in range(particles["pos"].shape[0] - 1)]
+    new_name = f"Particle_{len(particles['names'])}"
+    particles["names"].append(new_name)
+    
+    from utils.logger import log_object_event
+    log_object_event("ADDED", new_name, {
+        "position": position, 
+        "velocity": velocity, 
+        "mass": mass, 
+        "color": color
+    })
     
     return particles
 
@@ -95,8 +105,15 @@ def remove_particle(particles, index):
         particles["color"] = torch.cat([particles["color"][:index], particles["color"][index+1:]], dim=0)
     
     # Handle names if present
-    if "names" in particles:
-        particles["names"] = particles["names"][:index] + particles["names"][index+1:]
+    if "names" not in particles:
+        particles["names"] = [f"Particle_{i}" for i in range(particles["pos"].shape[0] + 1)]
+    
+    removed_name = particles["names"][index]
+    
+    from utils.logger import log_object_event
+    log_object_event("REMOVED", removed_name, {"index": index})
+    
+    particles["names"] = particles["names"][:index] + particles["names"][index+1:]
     
     return particles
 
@@ -109,178 +126,43 @@ def simulation_step(particles, model_fn, integrator, config, step):
     # Log and monitor
     stats = get_system_stats()
     log_simulation_step(step, particles, stats)
+    
+    # Log property / positional changes for tracking objects
+    from utils.logger import log_all_particles_state
+    log_all_particles_state(step, particles)
+    
     return particles, stats
 
-def run_simulation(config):
-    """Generator-based simulation loop that yields after each step."""
-    import torch  # Import here to ensure it's available
-    
-    pygame.init()
-    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-    width, height = screen.get_size()
-    pygame.display.set_caption("PyVerse - Simulation")
-    font = pygame.font.SysFont("Consolas", 20)
-    clock = pygame.time.Clock()
-    settings_idx = 0
-    editing = False
-    edit_buffer = ""
-    running = True
-    step = 0
-    stats = {}
-    particles = initialize_particles(config)
-    model_fn = select_model(config.get("interaction_model", "direct"))
-    integrator = get_integrator(config.get("integration_method", "verlet"))
-    # Update preset list dynamically
-    SETTINGS_OPTIONS["preset"] = get_all_presets() + ["random"]
-    
-    # Simulation state
-    paused = False
-    single_step = False
-    
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    running = False
-                elif event.key == pygame.K_F1:
-                    editing = not editing
-                elif event.key == pygame.K_SPACE:
-                    # Toggle pause
-                    paused = not paused
-                elif event.key == pygame.K_RIGHT and paused:
-                    # Single step when paused
-                    single_step = True
-                elif event.key == pygame.K_a:
-                    # Add random particle at cursor position
-                    pos = pygame.mouse.get_pos()
-                    # Convert screen coordinates to simulation coordinates
-                    sim_x = (pos[0] - width // 2) * 1e9 / (width // 2)
-                    sim_y = (pos[1] - height // 2) * 1e9 / (height // 2)
-                    sim_z = 0.0  # Default to z=0 plane
-                    # Random velocity
-                    vel = [torch.randn(1).item() * 0.1 for _ in range(3)]
-                    particles = add_particle(
-                        particles, 
-                        [sim_x, sim_y, sim_z], 
-                        vel,
-                        mass=torch.rand(1).item() * 10.0,
-                        color=(
-                            int(torch.rand(1).item() * 255),
-                            int(torch.rand(1).item() * 255),
-                            int(torch.rand(1).item() * 255)
-                        )
-                    )
-                elif event.key == pygame.K_d:
-                    # Remove particle closest to cursor
-                    if particles["pos"].shape[0] > 1:  # Ensure at least one particle remains
-                        pos = pygame.mouse.get_pos()
-                        sim_x = (pos[0] - width // 2) * 1e9 / (width // 2)
-                        sim_y = (pos[1] - height // 2) * 1e9 / (height // 2)
-                        
-                        # Find closest particle
-                        particle_pos = particles["pos"].cpu().numpy()
-                        distances = ((particle_pos[:, 0] - sim_x) ** 2 + 
-                                    (particle_pos[:, 1] - sim_y) ** 2) ** 0.5
-                        closest_idx = distances.argmin()
-                        particles = remove_particle(particles, closest_idx)
-                elif editing:
-                    if event.key == pygame.K_UP:
-                        settings_idx = (settings_idx - 1) % len(SETTINGS_LIST)
-                    elif event.key == pygame.K_DOWN:
-                        settings_idx = (settings_idx + 1) % len(SETTINGS_LIST)
-                    elif event.key == pygame.K_LEFT:
-                        key, typ = SETTINGS_LIST[settings_idx]
-                        options = SETTINGS_OPTIONS[key]
-                        idx = options.index(config.get(key, options[0]))
-                        config[key] = options[(idx - 1) % len(options)]
-                        if key == "preset":
-                            particles = initialize_particles(config)
-                    elif event.key == pygame.K_RIGHT:
-                        key, typ = SETTINGS_LIST[settings_idx]
-                        options = SETTINGS_OPTIONS[key]
-                        idx = options.index(config.get(key, options[0]))
-                        config[key] = options[(idx + 1) % len(options)]
-                        if key == "preset":
-                            particles = initialize_particles(config)
-                    elif event.key == pygame.K_s:
-                        # Save current config as a user preset
-                        if not os.path.exists(USER_PRESET_DIR):
-                            os.makedirs(USER_PRESET_DIR)
-                        preset_name = f"user_preset_{int(time.time())}.json"
-                        preset_path = os.path.join(USER_PRESET_DIR, preset_name)
-                        # Save only relevant config keys
-                        preset_data = {
-                            "config": {k: config[k] for k in config if k in dict(SETTINGS_LIST)}
-                        }
-                        with open(preset_path, "w") as f:
-                            json.dump(preset_data, f, indent=2)
-        
-        # Update simulation if not paused or if single step requested
-        if not paused or single_step:
-            particles, stats = simulation_step(particles, model_fn, integrator, config, step)
-            step += 1
-            single_step = False  # Reset single step flag
-        
-        # Render (draw particles)
-        screen.fill((0, 0, 0))
-        pos = particles["pos"].cpu().numpy()
-        if "color" in particles:
-            color = particles["color"].numpy()
-        else:
-            color = [(255, 255, 255)] * pos.shape[0]
-        for i, p in enumerate(pos):
-            x = int(width // 2 + p[0] / 1e9 * (width // 2))
-            y = int(height // 2 + p[1] / 1e9 * (height // 2))
-            pygame.draw.circle(screen, tuple(color[i]), (x, y), 6 if config.get("preset") == "solar_system" else 2)
-        
-        # Overlay stats
-        overlay_lines = [
-            f"Step: {step}",
-            f"FPS: {clock.get_fps():.2f}",
-            f"Particles: {particles['pos'].shape[0]}",
-            f"CPU: {stats.get('cpu', 0):.1f}% RAM: {stats.get('ram', 0):.1f}% GPU: {stats.get('gpu', 0):.1f}%",
-            f"Status: {'PAUSED' if paused else 'RUNNING'}",
-            "F1: Settings | SPACE: Pause/Resume | RIGHT: Step | A: Add | D: Delete | ESC: Quit"
-        ]
-        for i, line in enumerate(overlay_lines):
-            text_surface = font.render(line, True, (255, 255, 255))
-            screen.blit(text_surface, (20, 20 + i * 28))
-        
-        # Settings menu
-        if editing:
-            pygame.draw.rect(screen, (30, 30, 60), (width - 400, 0, 400, height))
-            for i, (key, typ) in enumerate(SETTINGS_LIST):
-                val = config.get(key, "")
-                color = (255, 255, 0) if i == settings_idx else (200, 200, 200)
-                text = f"{key}: {val}"
-                text_surface = font.render(text, True, color)
-                screen.blit(text_surface, (width - 380, 40 + i * 40))
-            # Show available presets
-            preset_list = SETTINGS_OPTIONS["preset"]
-            preset_title = font.render("Available Presets:", True, (180, 220, 255))
-            screen.blit(preset_title, (width - 380, 320))
-            for j, preset in enumerate(preset_list):
-                pcolor = (255, 255, 255) if preset == config.get("preset") else (180, 180, 180)
-                ptext = font.render(preset, True, pcolor)
-                screen.blit(ptext, (width - 380, 350 + j * 28))
-            # Show save instructions
-            save_text = font.render("S: Save as user preset", True, (200, 255, 200))
-            screen.blit(save_text, (width - 380, height - 60))
-        
-        pygame.display.flip()
-        clock.tick(config.get("fps", 60))
-        
-        # Yield current state to allow external control
-        yield {
-            "particles": particles,
-            "stats": stats,
-            "step": step,
-            "paused": paused
-        }
-    
-    # Save config on quit
-    config_path = os.path.join(os.path.dirname(__file__), "..", "config.py")
-    save_config_to_file(config, config_path)
-    pygame.quit()
+class SimulationSystem:
+    def __init__(self, config):
+        """Object-based simulation system."""
+        self.config = config
+        self.particles = initialize_particles(config)
+        self.model_fn = select_model(config.get("interaction_model", "direct"))
+        self.integrator = get_integrator(config.get("integration_method", "verlet"))
+        self.step_count = 0
+        self.stats = {"cpu": 0, "ram": 0, "gpu": 0}
+
+    def update(self):
+        """Perform a single iteration step of the simulation."""
+        forces = self.model_fn(self.particles)
+        self.particles = self.integrator(self.particles, forces, self.config)
+        self.stats = get_system_stats()
+        log_simulation_step(self.step_count, self.particles, self.stats)
+        from utils.logger import log_all_particles_state
+        log_all_particles_state(self.step_count, self.particles)
+        self.step_count += 1
+
+    def add_object(self, position, velocity, mass=1.0, color=(255, 255, 255)):
+        """Add a custom object to the system."""
+        self.particles = add_particle(self.particles, position, velocity, mass, color)
+
+    def remove_closest_object(self, target_pos):
+        """Remove the particle closest to a physical target position."""
+        if self.particles["pos"].shape[0] > 1:
+            p_pos = self.particles["pos"].cpu().numpy()
+            distances = ((p_pos[:, 0] - target_pos[0]) ** 2 + 
+                         (p_pos[:, 1] - target_pos[1]) ** 2) ** 0.5
+            closest_idx = distances.argmin()
+            self.particles = remove_particle(self.particles, closest_idx)
+

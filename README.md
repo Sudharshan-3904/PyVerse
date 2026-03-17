@@ -87,7 +87,7 @@ PyVerse/
 ├── graphics/
 │   ├── vispy_renderer.py
 │   ├── hud_overlay.py
-│   └── pygame_ui.py
+│   ├── pygame_ui.py
 │   └── visualizations/
 │       └── vispy_viewer.py
 ├── utils/
@@ -125,7 +125,7 @@ PyVerse/
 ## Documents
 
 - [Docs/ProjectPlan.md](Docs/ProjectPlan.md):
-  - Containes the results of the starting research done for this project
+  - Contains the results of the starting research done for this project
 - [Docs/ToDo.md](Docs/ToDo.md):
   - Contains categorized milestones to be achieved
   - Provides a task-wise list for implementation

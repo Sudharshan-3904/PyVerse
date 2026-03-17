@@ -178,30 +178,62 @@ def prompt_for_preset_name(screen, font):
         pygame.display.flip()
     return None
 
-def show_main_menu(config=None):
+def draw_gradient_bg(screen):
+    w, h = screen.get_size()
+    for y in range(h):
+        c = int(25 - (y / h) * 15)
+        pygame.draw.line(screen, (c, c, c + 15), (0, y), (w, y))
+
+def draw_button(screen, rect, text, font, hovered=False, selected=False):
+    import pygame.gfxdraw
+    color = (60, 100, 200) if hovered else (40, 60, 100)
+    if selected:
+        color = (100, 150, 255)
+    
+    border_radius = 12
+    pygame.draw.rect(screen, color, rect, border_radius=border_radius)
+    pygame.draw.rect(screen, (200, 200, 255), rect, width=2, border_radius=border_radius)
+    
+    label = font.render(text, True, (255, 255, 255))
+    text_rect = label.get_rect(center=rect.center)
+    screen.blit(label, text_rect)
+
+def show_main_menu(config=None, create_mode=False):
     """
-    Main simulation menu loop. Handles simulation, overlays, and user input.
-    Accepts a config dict to allow launching with a selected preset.
+    Main simulation execution window. Can start in 'create_mode' or standard.
+    Now utilizes the object-oriented SimulationSystem backend.
     """
     pygame.init()
-    import os
     os.environ['SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS'] = '0'
-    screen = pygame.display.set_mode((800, 600), pygame.NOFRAME | pygame.RESIZABLE)
-    pygame.display.set_caption("Universe Simulator")
-    font = pygame.font.SysFont("Consolas", 16)
+    screen = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
+    pygame.display.set_caption("PyVerse Explorer")
+    
+    font = pygame.font.SysFont("Segoe UI", 18)
+    title_font = pygame.font.SysFont("Segoe UI", 28, bold=True)
+    
     clock = pygame.time.Clock()
-    # Use provided config or default CONFIG
-    sim_config = config if config is not None else CONFIG
-    sim_generator = run_simulation(sim_config)
+    
+    from core.simulation_loop import SimulationSystem
+    sim_config = config if config is not None else CONFIG.copy()
+    if create_mode:
+        sim_config["preset"] = "random" # start empty or random if needed
+        # Or you can zero out particles
+        sim_config["particle_count"] = 0
+        
+    system = SimulationSystem(sim_config)
+    
     running = True
-    paused = False
+    paused = create_mode
     step_requested = False
-    show_help = False
-    show_presets = False
-    show_settings = False
-    presets = get_all_presets() + ["random"]
-    preset_idx = 0
+    
+    import torch
+    
+    overlay_enabled = True
+    
     while running:
+        w, h = screen.get_size()
+        mouse_pos = pygame.mouse.get_pos()
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -213,214 +245,173 @@ def show_main_menu(config=None):
                 elif event.key == pygame.K_RIGHT and paused:
                     step_requested = True
                 elif event.key == pygame.K_a:
-                    # Add a particle at the cursor position with random velocity and mass
-                    pos = pygame.mouse.get_pos()
-                    width, height = screen.get_size()
-                    sim_x = (pos[0] - width // 2) * 1e9 / (width // 2)
-                    sim_y = (pos[1] - height // 2) * 1e9 / (height // 2)
-                    sim_z = 0.0
-                    import torch
+                    sim_x = (mouse_pos[0] - w // 2) * 1e9 / (w // 2)
+                    sim_y = (mouse_pos[1] - h // 2) * 1e9 / (h // 2)
                     vel = [torch.randn(1).item() * 0.1 for _ in range(3)]
-                    mass = torch.rand(1).item() * 10.0
-                    color = (
-                        int(torch.rand(1).item() * 255),
-                        int(torch.rand(1).item() * 255),
-                        int(torch.rand(1).item() * 255)
-                    )
-                    # Add the particle to the simulation (handled in simulation_loop)
-                    # Set a flag or call a callback if needed
-                    # Here, we just pass as the actual addition is handled in simulation_loop
-                    pass
+                    system.add_object([sim_x, sim_y, 0.0], vel)
+                elif event.key == pygame.K_s and create_mode:
+                    # 'S' shortcut to add a massive star
+                    sim_x = (mouse_pos[0] - w // 2) * 1e9 / (w // 2)
+                    sim_y = (mouse_pos[1] - h // 2) * 1e9 / (h // 2)
+                    system.add_object([sim_x, sim_y, 0.0], [0.0, 0.0, 0.0], mass=10000.0, color=(255, 200, 50))
                 elif event.key == pygame.K_d:
-                    # Remove the particle closest to the cursor
-                    # Actual removal is handled in simulation_loop
-                    pass
+                    sim_x = (mouse_pos[0] - w // 2) * 1e9 / (w // 2)
+                    sim_y = (mouse_pos[1] - h // 2) * 1e9 / (h // 2)
+                    system.remove_closest_object([sim_x, sim_y])
                 elif event.key == pygame.K_h:
-                    show_help = not show_help
-                elif event.key == pygame.K_f or event.key == pygame.K_F1:
-                    show_settings = not show_settings
-                elif event.key == pygame.K_s:
-                    # Save preset: prompt for name, only save if user confirms
-                    preset_name = prompt_for_preset_name(screen, font)
-                    if preset_name:
-                        user_dir = os.path.join('assets', 'presets', 'user')
-                        if not os.path.exists(user_dir):
-                            os.makedirs(user_dir)
-                        preset_path = os.path.join(user_dir, preset_name + '.json')
-                        # Save current config (minimal example, expand as needed)
-                        with open(preset_path, 'w') as f:
-                            json.dump(CONFIG, f, indent=2)
-                        # Update preset list
-                        presets = get_all_presets() + ["random"]
-                elif event.key == pygame.K_n:
-                    step_requested = True
-                elif event.key == pygame.K_UP and show_presets:
-                    preset_idx = (preset_idx - 1) % len(presets)
-                elif event.key == pygame.K_DOWN and show_presets:
-                    preset_idx = (preset_idx + 1) % len(presets)
-                elif event.key == pygame.K_RETURN and show_presets:
-                    sim_config["preset"] = presets[preset_idx]
-                    # Restart simulation with new preset
-                    sim_generator = run_simulation(sim_config)
-                    show_presets = False
-                elif event.key == pygame.K_BACKSPACE and show_presets:
-                    show_presets = False
-        screen.fill((0, 0, 0))
-        try:
-            if not paused or step_requested:
-                sim_state = next(sim_generator)
+                    overlay_enabled = not overlay_enabled
+            elif event.type == pygame.MOUSEBUTTONDOWN and create_mode:
+                if event.button == 1: # Left click add planet
+                    sim_x = (mouse_pos[0] - w // 2) * 1e9 / (w // 2)
+                    sim_y = (mouse_pos[1] - h // 2) * 1e9 / (h // 2)
+                    vel = [torch.randn(1).item() * 0.1 for _ in range(3)]
+                    system.add_object([sim_x, sim_y, 0.0], vel, mass=1.0)
+
+        # Simulation Tick
+        if not paused or step_requested:
+            try:
+                system.update()
                 step_requested = False
-            particles = sim_state["particles"]
-            stats = sim_state["stats"]
-            step = sim_state["step"]
-            paused = sim_state["paused"]
-        except StopIteration:
-            # Instead of break, just pause simulation and show message
-            paused = True
-            step = 0
-            stats = {"cpu": 0, "ram": 0, "gpu": 0, "cpu_temp": 0, "gpu_temp": 0}
-            particles = {"pos": [], "vel": [], "mass": []}
-        render_scene(particles, sim_config)
-        fps = clock.get_fps()
-        # Only show the control_lines overlay (small font, blue color)
-        control_lines = [
-            f"Step: {step}",
-            f"Status: {'PAUSED' if paused else 'RUNNING'}",
-            "SPACE: Pause/Resume",
-            "RIGHT: Step (when paused)",
-            "A: Add particle at cursor",
-            "D: Delete particle at cursor",
-            "ESC: Quit"
-        ]
-        for i, line in enumerate(control_lines):
-            text_surface = font.render(line, True, (200, 200, 255))
-            screen.blit(text_surface, (10, 150 + i * 20))
-        if show_help:
-            show_help_screen(screen, font)
-        if show_presets:
-            show_preset_management(screen, font, presets, preset_idx)
-        if show_settings:
-            show_settings_menu(screen, font, CONFIG, {}, 0)
+            except Exception as e:
+                print(f"Simulation Error: {e}")
+                paused = True
+                
+        # Pure Renderer bypass for pygame fallback since vispy handles it elsewhere!
+        # Assuming render_scene uses VisPy and takes foreground, Pygame provides just text overlay.
+        # But if VisPy is intercepting, we fallback to drawing physically here for generic visualization
+        screen.fill((5, 5, 12))
+        
+        if system.particles["pos"].shape[0] > 0:
+            pos = system.particles["pos"].cpu().numpy()
+            if "color" in system.particles:
+                color = system.particles["color"].numpy()
+            else:
+                color = [(200, 200, 255)] * pos.shape[0]
+                
+            for i, p in enumerate(pos):
+                nx = int(w // 2 + p[0] / 1e9 * (w // 2))
+                ny = int(h // 2 + p[1] / 1e9 * (h // 2))
+                if 0 <= nx <= w and 0 <= ny <= h:
+                    pygame.draw.circle(screen, tuple(color[i]), (nx, ny), 3)
+
+        if overlay_enabled:
+            # Stats backdrop HUD
+            hud_rect = pygame.Rect(10, 10, 320, 200)
+            pygame.draw.rect(screen, (15, 20, 35, 200), hud_rect, border_radius=10)
+            pygame.draw.rect(screen, (50, 70, 120), hud_rect, width=2, border_radius=10)
+            
+            title = title_font.render("PyVerse Engine", True, (255, 200, 100))
+            screen.blit(title, (20, 20))
+            
+            fps = clock.get_fps()
+            
+            lines = [
+                f"Status: {'PAUSED' if paused else 'RUNNING'}",
+                f"Tick: {system.step_count} | FPS: {fps:.1f}",
+                f"Objects: {system.particles['pos'].shape[0]}",
+                f"CPU: {system.stats.get('cpu',0):.1f}% | RAM: {system.stats.get('ram',0):.1f}%"
+            ]
+            
+            for i, line in enumerate(lines):
+                txt = font.render(line, True, (230, 240, 255))
+                screen.blit(txt, (20, 60 + i * 25))
+
+            if create_mode:
+                cmd_txt = font.render("Create Mode: L-Click(Planet), S(Star), D(Del)", True, (150, 255, 150))
+                screen.blit(cmd_txt, (20, 170))
+            else:
+                cmd_txt = font.render("A(Add), D(Del), SPACE(Pause), H(Hide UI)", True, (150, 200, 255))
+                screen.blit(cmd_txt, (20, 170))
+        
         pygame.display.flip()
-        clock.tick(60)
+        clock.tick(60 if not sim_config.get("benchmark_mode") else 0)
+        
     pygame.quit()
 
 def launch_menu(config):
-    """
-    Launch the main menu for PyVerse. Handles user selection for simulation, benchmark, stress test, presets, and help.
-    Args:
-        config (dict): Initial configuration dictionary.
-    Returns:
-        dict or None: Updated config or None if exited.
-    """
+    """Refined and visually appealing entry lobby menu."""
     pygame.init()
-    screen = pygame.display.set_mode((600, 400))
-    pygame.display.set_caption("PyVerse - Galaxy Simulator Menu")
-    font = pygame.font.SysFont(None, 36)
+    screen = pygame.display.set_mode((900, 550))
+    pygame.display.set_caption("Welcome to PyVerse")
+    
+    title_font = pygame.font.SysFont("Segoe UI", 56, bold=True)
+    subtitle_font = pygame.font.SysFont("Segoe UI", 20, italic=True)
+    btn_font = pygame.font.SysFont("Segoe UI", 22, bold=True)
+    
     clock = pygame.time.Clock()
+    
+    from core.simulation_loop import SimulationSystem
+    
     menu_items = [
-        ("Start Simulation", "start"),
-        ("Run Benchmark", "benchmark"),
-        ("Run Stress Test", "stress"),
-        ("Presets", "presets"),
-        ("Help", "help"),
-        ("Exit", "exit")
+        {"id": "start", "label": "Start Default Simulation"},
+        {"id": "create", "label": "Create Custom System"},
+        {"id": "benchmark", "label": "Run Benchmark"},
+        {"id": "stress", "label": "Run Stress Test"},
+        {"id": "exit", "label": "Exit"}
     ]
-    selected = 0
+    
     running = True
-    show_help = False
-    show_presets = False
-    presets = get_all_presets() + ["random"]
-    preset_idx = 0
+    hovered_idx = -1
+    
     while running:
-        screen.fill((10, 10, 30))
-        for i, (text, _) in enumerate(menu_items):
-            color = (255, 255, 0) if i == selected else (200, 200, 200)
-            label = font.render(text, True, color)
-            screen.blit(label, (60, 100 + i * 50))
-        if show_help:
-            show_help_screen(screen, font)
-        if show_presets:
-            show_preset_management(screen, font, presets, preset_idx)
+        draw_gradient_bg(screen)
+        
+        # Draw floating stars or simple accent points
+        for _ in range(30):
+            import random
+            x = random.randint(0, 900)
+            y = random.randint(0, 550)
+            pygame.draw.circle(screen, (255, 255, 255, 50), (x, y), 1 if random.random() > 0.5 else 2)
+            
+        mouse_pos = pygame.mouse.get_pos()
+        hovered_idx = -1
+        
+        title = title_font.render("P Y V E R S E", True, (255, 255, 255))
+        sub = subtitle_font.render("Galaxy-Scale Physics Sandbox", True, (180, 200, 255))
+        
+        screen.blit(title, (900 // 2 - title.get_width() // 2, 60))
+        screen.blit(sub, (900 // 2 - sub.get_width() // 2, 130))
+        
+        start_y = 220
+        buttons = []
+        for i, item in enumerate(menu_items):
+            rect = pygame.Rect(900 // 2 - 150, start_y + i * 55, 300, 45)
+            buttons.append((rect, item))
+            is_hovered = rect.collidepoint(mouse_pos)
+            if is_hovered:
+                hovered_idx = i
+            draw_button(screen, rect, item["label"], btn_font, hovered=is_hovered)
+            
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-                sys.exit(0)
-            elif event.type == pygame.KEYDOWN:
-                if show_help:
-                    if event.key == pygame.K_h:
-                        show_help = False
-                elif show_presets:
-                    if event.key == pygame.K_UP:
-                        preset_idx = (preset_idx - 1) % len(presets)
-                    elif event.key == pygame.K_DOWN:
-                        preset_idx = (preset_idx + 1) % len(presets)
-                    elif event.key == pygame.K_RETURN:
-                        config["preset"] = presets[preset_idx]
-                        show_presets = False
-                    elif event.key == pygame.K_BACKSPACE:
-                        show_presets = False
-                else:
-                    if event.key == pygame.K_UP:
-                        selected = (selected - 1) % len(menu_items)
-                    elif event.key == pygame.K_DOWN:
-                        selected = (selected + 1) % len(menu_items)
-                    elif event.key == pygame.K_RETURN:
-                        action = menu_items[selected][1]
-                        print(f"Selected action: {action}")
-                        if action == "exit":
-                            pygame.quit()
-                            return None
-                        elif action == "start":
-                            config["preset"] = presets[preset_idx] if presets else "random"
-                            pygame.quit()
-                            show_main_menu(config)  # Pass config to show_main_menu
-                            return None
-                        elif action == "benchmark":
-                            config_bench = config.copy()
-                            config_bench["benchmark_mode"] = True
-                            pygame.quit()
-                            # Run simulation in benchmark mode
-                            sim_generator = run_simulation(config_bench)
-                            for _ in sim_generator:
-                                pass  # Run to completion
-                            print("Benchmark completed.")
-                            return None
-                        elif action == "stress":
-                            config_stress = config.copy()
-                            config_stress["stress_test"] = True
-                            pygame.quit()
-                            # Run simulation in stress test mode
-                            sim_generator = run_simulation(config_stress)
-                            for _ in sim_generator:
-                                pass  # Run to completion
-                            print("Stress test completed.")
-                            return None
-                        elif action == "help":
-                            show_help = True
-                            while show_help:
-                                screen.fill((10, 10, 30))
-                                show_help_screen(screen, font)
-                                pygame.display.flip()
-                                for event in pygame.event.get():
-                                    if event.type == pygame.KEYDOWN and (event.key == pygame.K_h or event.key == pygame.K_ESCAPE or event.key == pygame.K_RETURN):
-                                        show_help = False
-                        elif action == "presets":
-                            show_presets = True
-                            while show_presets:
-                                screen.fill((10, 10, 30))
-                                show_preset_management(screen, font, presets, preset_idx)
-                                pygame.display.flip()
-                                for event in pygame.event.get():
-                                    if event.type == pygame.KEYDOWN:
-                                        if event.key == pygame.K_UP:
-                                            preset_idx = (preset_idx - 1) % len(presets)
-                                        elif event.key == pygame.K_DOWN:
-                                            preset_idx = (preset_idx + 1) % len(presets)
-                                        elif event.key == pygame.K_RETURN:
-                                            config["preset"] = presets[preset_idx]
-                                            show_presets = False
-                                        elif event.key == pygame.K_BACKSPACE or event.key == pygame.K_ESCAPE:
-                                            show_presets = False
+                return
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if hovered_idx != -1:
+                    action = menu_items[hovered_idx]["id"]
+                    
+                    if action == "exit":
+                        pygame.quit()
+                        return
+                    elif action == "start":
+                        pygame.quit()
+                        show_main_menu(config, create_mode=False)
+                        return
+                    elif action == "create":
+                        pygame.quit()
+                        show_main_menu(config, create_mode=True)
+                        return
+                    elif action == "benchmark":
+                        from utils.benchmark import run_benchmarks
+                        pygame.quit()
+                        run_benchmarks(SimulationSystem, ["solar_system", "binary_star", "three_body"])
+                        return
+                    elif action == "stress":
+                        from utils.stress_tester import run_stress_test
+                        pygame.quit()
+                        run_stress_test(SimulationSystem, config)
+                        return
+                        
         pygame.display.flip()
-        clock.tick(30)
+        clock.tick(60)
+

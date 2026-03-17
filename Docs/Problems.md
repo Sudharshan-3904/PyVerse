@@ -1,6 +1,6 @@
 # Problems List
 
-> This file contains a list of problems, bugs and issues found dring development of the system.
+> This file contains a list of problems, bugs and issues found during development of the system.
 
 ---
 
@@ -19,8 +19,8 @@
 
 | S. No. | Title           | Level  | Description                                                        | Status |
 | ------ | --------------- | ------ | ------------------------------------------------------------------ | :----: |
-| 1      | Preset loading  | High   | When a preset is selected, the preset is not loaded for simulation | **Y**  |
+| 1      | Preset loading  | High   | When a preset is selected, the preset is not loaded for simulation | **D**  |
 | 2      | Shaders         | Medium | Implementing proper shaders for visualization that is real-time    | **Y**  |
-| 3      | Benchmarking    | Medium | Improve the benckmarking status                                    | **Y**  |
+| 3      | Benchmarking    | Medium | Improve the benckmarking status                                    | **D**  |
 | 4      | Instructions    | Low    | Detailed instructions need to be provided                          | **Y**  |
 | 5      | UI Improvements | Low    | Improve the user interface to be more "industry-like"              | **Y**  |
