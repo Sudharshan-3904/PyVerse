@@ -2,13 +2,14 @@
 # Main Pygame UI for PyVerse: handles menus, overlays, settings, and simulation launch.
 # Provides user interaction, preset management, and simulation control.
 
+import math
+
 import pygame
 import sys
 import json
 import os
 import glob
 from config import CONFIG
-from core.simulation_loop import run_simulation
 from graphics.vispy_renderer import render_scene
 from utils.system_monitor import get_system_stats
 
@@ -203,8 +204,8 @@ def show_main_menu(config=None, create_mode=False):
     Main simulation execution window. Can start in 'create_mode' or standard.
     Now utilizes the object-oriented SimulationSystem backend.
     """
-    pygame.init()
     os.environ['SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS'] = '0'
+    pygame.init()
     screen = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
     pygame.display.set_caption("PyVerse Explorer")
     
@@ -245,27 +246,31 @@ def show_main_menu(config=None, create_mode=False):
                 elif event.key == pygame.K_RIGHT and paused:
                     step_requested = True
                 elif event.key == pygame.K_a:
-                    sim_x = (mouse_pos[0] - w // 2) * 1e9 / (w // 2)
-                    sim_y = (mouse_pos[1] - h // 2) * 1e9 / (h // 2)
-                    vel = [torch.randn(1).item() * 0.1 for _ in range(3)]
-                    system.add_object([sim_x, sim_y, 0.0], vel)
+                    if w // 2 > 0:
+                        sim_x = (mouse_pos[0] - w // 2) * 1e9 / (w // 2)
+                        sim_y = (mouse_pos[1] - h // 2) * 1e9 / (h // 2)
+                        vel = [torch.randn(1).item() * 0.1 for _ in range(3)]
+                        system.add_object([sim_x, sim_y, 0.0], vel)
                 elif event.key == pygame.K_s and create_mode:
                     # 'S' shortcut to add a massive star
-                    sim_x = (mouse_pos[0] - w // 2) * 1e9 / (w // 2)
-                    sim_y = (mouse_pos[1] - h // 2) * 1e9 / (h // 2)
-                    system.add_object([sim_x, sim_y, 0.0], [0.0, 0.0, 0.0], mass=10000.0, color=(255, 200, 50))
+                    if w // 2 > 0:
+                        sim_x = (mouse_pos[0] - w // 2) * 1e9 / (w // 2)
+                        sim_y = (mouse_pos[1] - h // 2) * 1e9 / (h // 2)
+                        system.add_object([sim_x, sim_y, 0.0], [0.0, 0.0, 0.0], mass=10000.0, color=(255, 200, 50))
                 elif event.key == pygame.K_d:
-                    sim_x = (mouse_pos[0] - w // 2) * 1e9 / (w // 2)
-                    sim_y = (mouse_pos[1] - h // 2) * 1e9 / (h // 2)
-                    system.remove_closest_object([sim_x, sim_y])
+                    if w // 2 > 0:
+                        sim_x = (mouse_pos[0] - w // 2) * 1e9 / (w // 2)
+                        sim_y = (mouse_pos[1] - h // 2) * 1e9 / (h // 2)
+                        system.remove_closest_object([sim_x, sim_y])
                 elif event.key == pygame.K_h:
                     overlay_enabled = not overlay_enabled
             elif event.type == pygame.MOUSEBUTTONDOWN and create_mode:
                 if event.button == 1: # Left click add planet
-                    sim_x = (mouse_pos[0] - w // 2) * 1e9 / (w // 2)
-                    sim_y = (mouse_pos[1] - h // 2) * 1e9 / (h // 2)
-                    vel = [torch.randn(1).item() * 0.1 for _ in range(3)]
-                    system.add_object([sim_x, sim_y, 0.0], vel, mass=1.0)
+                    if w // 2 > 0:
+                        sim_x = (mouse_pos[0] - w // 2) * 1e9 / (w // 2)
+                        sim_y = (mouse_pos[1] - h // 2) * 1e9 / (h // 2)
+                        vel = [torch.randn(1).item() * 0.1 for _ in range(3)]
+                        system.add_object([sim_x, sim_y, 0.0], vel, mass=1.0)
 
         # Simulation Tick
         if not paused or step_requested:
@@ -283,45 +288,69 @@ def show_main_menu(config=None, create_mode=False):
         
         if system.particles["pos"].shape[0] > 0:
             pos = system.particles["pos"].cpu().numpy()
+            mass = system.particles["mass"].cpu().numpy().flatten()
             if "color" in system.particles:
-                color = system.particles["color"].numpy()
+                color = system.particles["color"].cpu().numpy()
             else:
                 color = [(200, 200, 255)] * pos.shape[0]
-                
+
             for i, p in enumerate(pos):
                 nx = int(w // 2 + p[0] / 1e9 * (w // 2))
                 ny = int(h // 2 + p[1] / 1e9 * (h // 2))
                 if 0 <= nx <= w and 0 <= ny <= h:
-                    pygame.draw.circle(screen, tuple(color[i]), (nx, ny), 3)
+                    m = float(mass[i]) if i < len(mass) else 1.0
+                    # Size based on mass (log scale), clamped for visibility
+                    radius = int(min(max((math.log10(m + 1e-12) - 22) * 0.8 + 2, 2), 12))
+                    if m > 1e28:
+                        # Render a soft glow for stars
+                        glow = radius * 3
+                        glow_surf = pygame.Surface((glow * 2, glow * 2), pygame.SRCALPHA)
+                        glow_color = tuple(list(color[i])[:3]) + [45]
+                        pygame.draw.circle(glow_surf, glow_color, (glow, glow), glow)
+                        screen.blit(glow_surf, (nx - glow, ny - glow))
+                        pygame.draw.circle(screen, tuple(color[i]), (nx, ny), radius + 1)
+                    else:
+                        pygame.draw.circle(screen, tuple(color[i]), (nx, ny), radius)
 
         if overlay_enabled:
             # Stats backdrop HUD
-            hud_rect = pygame.Rect(10, 10, 320, 200)
+            hud_rect = pygame.Rect(10, 10, 320, 160)
             pygame.draw.rect(screen, (15, 20, 35, 200), hud_rect, border_radius=10)
             pygame.draw.rect(screen, (50, 70, 120), hud_rect, width=2, border_radius=10)
-            
+
             title = title_font.render("PyVerse Engine", True, (255, 200, 100))
             screen.blit(title, (20, 20))
-            
+
             fps = clock.get_fps()
-            
+
             lines = [
                 f"Status: {'PAUSED' if paused else 'RUNNING'}",
                 f"Tick: {system.step_count} | FPS: {fps:.1f}",
                 f"Objects: {system.particles['pos'].shape[0]}",
                 f"CPU: {system.stats.get('cpu',0):.1f}% | RAM: {system.stats.get('ram',0):.1f}%"
             ]
-            
+
             for i, line in enumerate(lines):
                 txt = font.render(line, True, (230, 240, 255))
                 screen.blit(txt, (20, 60 + i * 25))
 
+            # Controls/Commands (bottom-right)
+            controls = [
+                "SPACE: Play/Pause",
+                "ESC: Quit",
+                "A: Add object",
+                "D: Remove closest",
+                "H: Toggle HUD",
+            ]
             if create_mode:
-                cmd_txt = font.render("Create Mode: L-Click(Planet), S(Star), D(Del)", True, (150, 255, 150))
-                screen.blit(cmd_txt, (20, 170))
-            else:
-                cmd_txt = font.render("A(Add), D(Del), SPACE(Pause), H(Hide UI)", True, (150, 200, 255))
-                screen.blit(cmd_txt, (20, 170))
+                controls.append("L-Click: Add planet | S: Add star")
+
+            line_height = 22
+            for i, ctrl in enumerate(reversed(controls)):
+                txt = font.render(ctrl, True, (200, 255, 200))
+                rect = txt.get_rect()
+                rect.bottomright = (w - 20, h - 20 - i * line_height)
+                screen.blit(txt, rect)
         
         pygame.display.flip()
         clock.tick(60 if not sim_config.get("benchmark_mode") else 0)

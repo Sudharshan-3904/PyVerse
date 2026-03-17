@@ -5,7 +5,11 @@ try:
 except ImportError:
     GPUtil = None
 
+# Cache WMI instance
+_wmi_instance = None
+
 def get_system_stats():
+    global _wmi_instance
     cpu = psutil.cpu_percent(interval=None)
     ram = psutil.virtual_memory().percent
     gpu = 0.0
@@ -19,9 +23,10 @@ def get_system_stats():
     cpu_temp = 0.0
     if platform.system() == "Windows":
         try:
-            import wmi
-            w = wmi.WMI(namespace="root\\OpenHardwareMonitor")
-            temperature_infos = w.Sensor()
+            if _wmi_instance is None:
+                import wmi
+                _wmi_instance = wmi.WMI(namespace="root\\OpenHardwareMonitor")
+            temperature_infos = _wmi_instance.Sensor()
             for sensor in temperature_infos:
                 if sensor.SensorType == 'Temperature' and 'CPU Core' in sensor.Name:
                     cpu_temp = sensor.Value

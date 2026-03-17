@@ -1,7 +1,7 @@
 def run_benchmark():
     import time
     from config import CONFIG
-    from core.simulation_loop import run_simulation
+    from core.simulation_loop import SimulationSystem
     from utils.logger import setup_logger
 
     logger = setup_logger()
@@ -9,10 +9,10 @@ def run_benchmark():
     logger.info("Starting benchmark...")
 
     start_time = time.time()
-    sim = run_simulation(config)
+    sim = SimulationSystem(config)
 
     for frame in range(100):
-        next(sim)
+        sim.update()
 
     end_time = time.time()
     fps = 100 / (end_time - start_time)

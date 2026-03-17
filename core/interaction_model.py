@@ -14,6 +14,6 @@ def get_forces(particles, config):
 
         return compute_direct_gravity(particles)
     else:
-        from core.physics_engine.barnes_hut import compute_barnes_hut
+        from core.physics_engine.barnes_hut import compute_barnes_hut_forces
 
-        return compute_barnes_hut(particles)
+        return compute_barnes_hut_forces(particles)

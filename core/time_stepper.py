@@ -11,6 +11,7 @@ def verlet(particles, forces, config):
     if "prev_pos" not in particles:
         particles["prev_pos"] = particles["pos"] - particles["vel"] * dt
     new_pos = 2 * particles["pos"] - particles["prev_pos"] + (forces / particles["mass"]) * dt * dt
+    particles["vel"] = (new_pos - particles["prev_pos"]) / (2 * dt)  # Update velocity
     particles["prev_pos"] = particles["pos"]
     particles["pos"] = new_pos
     return particles

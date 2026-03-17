@@ -7,7 +7,7 @@ class OctreeNode:
         self.indices = indices
         self.children = []
         self.mass = 0.0
-        self.mass_center = torch.zeros(3)
+        self.mass_center = torch.zeros(3, device=center.device, dtype=center.dtype)
 
     def is_leaf(self):
         return len(self.children) == 0
@@ -34,10 +34,10 @@ def compute_mass(node, pos, mass):
         if node.mass > 0:
             node.mass_center = (pos[node.indices] * mass[node.indices]).sum(dim=0) / node.mass
         else:
-            node.mass_center = torch.zeros(3)
+            node.mass_center = torch.zeros(3, device=pos.device, dtype=pos.dtype)
     else:
         node.mass = 0.0
-        node.mass_center = torch.zeros(3)
+        node.mass_center = torch.zeros(3, device=pos.device, dtype=pos.dtype)
         for child in node.children:
             compute_mass(child, pos, mass)
             node.mass += child.mass
@@ -47,7 +47,7 @@ def compute_mass(node, pos, mass):
 
 def barnes_hut_force(node, pos, mass, i, theta=0.5, G=6.67430e-11):
     if node.is_leaf():
-        f = torch.zeros(3)
+        f = torch.zeros(3, device=pos.device, dtype=pos.dtype)
         for j in node.indices:
             if i != j:
                 diff = pos[j] - pos[i]
@@ -62,7 +62,7 @@ def barnes_hut_force(node, pos, mass, i, theta=0.5, G=6.67430e-11):
             dist = torch.norm(diff) + 1e-5
             return G * mass[i] * node.mass * diff / (dist ** 3)
         else:
-            f = torch.zeros(3)
+            f = torch.zeros(3, device=pos.device, dtype=pos.dtype)
             for child in node.children:
                 f += barnes_hut_force(child, pos, mass, i, theta, G)
             return f

@@ -2,6 +2,7 @@ import os
 import json
 from loguru import logger
 import logging
+from logging.handlers import RotatingFileHandler
 
 os.makedirs('logs', exist_ok=True)
 
@@ -18,7 +19,7 @@ def log_simulation_step(step, particles, stats):
 # Specialized Object Tracker logger
 obj_logger = logging.getLogger("object_tracker")
 obj_logger.setLevel(logging.INFO)
-obj_handler = logging.FileHandler("logs/object_changes.log")
+obj_handler = RotatingFileHandler("logs/object_changes.log", maxBytes=10*1024*1024, backupCount=5)
 obj_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
 if not obj_logger.handlers:
     obj_logger.addHandler(obj_handler)
@@ -49,4 +50,4 @@ def log_all_particles_state(step, particles):
             "position": [round(p, 4) for p in pos[i]],
             "mass": mass_val
         }
-        log_object_event("STATE_UPDATE", names[i], details)
+        log_object_event("STATE_UPDATE", names[i], details)

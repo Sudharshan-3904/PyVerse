@@ -1,4 +1,3 @@
-import pygame
 import sys
 import json
 import torch
@@ -142,15 +141,18 @@ class SimulationSystem:
         self.integrator = get_integrator(config.get("integration_method", "verlet"))
         self.step_count = 0
         self.stats = {"cpu": 0, "ram": 0, "gpu": 0}
+        self.stats_update_interval = 60  # Update stats every 60 frames
 
     def update(self):
         """Perform a single iteration step of the simulation."""
         forces = self.model_fn(self.particles)
         self.particles = self.integrator(self.particles, forces, self.config)
-        self.stats = get_system_stats()
+        if self.step_count % self.stats_update_interval == 0:
+            self.stats = get_system_stats()
         log_simulation_step(self.step_count, self.particles, self.stats)
-        from utils.logger import log_all_particles_state
-        log_all_particles_state(self.step_count, self.particles)
+        if self.step_count % 100 == 0:  # Log particles every 100 steps
+            from utils.logger import log_all_particles_state
+            log_all_particles_state(self.step_count, self.particles)
         self.step_count += 1
 
     def add_object(self, position, velocity, mass=1.0, color=(255, 255, 255)):
